@@ -1,1 +1,1 @@
-web: goslackit
+web: main.go
