@@ -2,7 +2,10 @@ package slack
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
+	"time"
+	"unicode"
 
 	"github.com/nlopes/slack"
 )
@@ -12,7 +15,7 @@ import (
    NOTE: command_arg_1 and command_arg_2 represent optional parameteras that you define
    in the Slack API UI
 */
-const helpMessage = "type in '@BOT_NAME <command_arg_1> <command_arg_2>'"
+const helpMessage = "type in '@shuffle-bot shuffle or just @shuffle-bot'"
 
 /*
    CreateSlackClient sets up the slack RTM (real-timemessaging) client library,
@@ -20,7 +23,7 @@ const helpMessage = "type in '@BOT_NAME <command_arg_1> <command_arg_2>'"
    DO NOT EDIT THIS FUNCTION. This is a fully complete implementation.
 */
 func CreateSlackClient(apiKey string) *slack.RTM {
-	api := slack.New(apiKey)
+	api := slack.New(apiKey) // this is some cool stuff
 	rtm := api.NewRTM()
 	go rtm.ManageConnection() // goroutine!
 	return rtm
@@ -53,6 +56,7 @@ func RespondToEvents(slackClient *slack.RTM) {
 			// ===============================================================
 			sendResponse(slackClient, message, ev.Channel)
 			sendHelp(slackClient, message, ev.Channel)
+			annoy(slackClient, message, ev.Channel)
 			// ===============================================================
 			// END SLACKBOT CUSTOM CODE
 		default:
@@ -72,8 +76,29 @@ func sendHelp(slackClient *slack.RTM, message, slackChannel string) {
 // sendResponse is NOT unimplemented --- write code in the function body to complete!
 
 func sendResponse(slackClient *slack.RTM, message, slackChannel string) {
+
+	if !strings.Contains(strings.ToLower(message), "scramble") {
+		return
+	}
+
 	command := strings.ToLower(message)
 	println("[RECEIVED] sendResponse:", command)
+
+	runes := []rune(message)
+
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+
+	for i := len(runes); i > 0; i-- {
+		randIndex := r.Intn(i)
+		runes[i-1], runes[randIndex] = runes[randIndex], runes[i-1]
+	}
+
+	newMessage := ""
+	for _, rune := range runes {
+		newMessage += string(rune)
+	}
+
+	slackClient.SendMessage(slackClient.NewOutgoingMessage(newMessage, slackChannel))
 
 	// START SLACKBOT CUSTOM CODE
 	// ===============================================================
@@ -83,4 +108,23 @@ func sendResponse(slackClient *slack.RTM, message, slackChannel string) {
 	//      2. STRETCH: Write a goroutine that calls an external API based on the data received in this function.
 	// ===============================================================
 	// END SLACKBOT CUSTOM CODE
+}
+
+func annoy(slackClient *slack.RTM, message, slackChannel string) {
+
+	newMessage := ""
+	for _, char := range message {
+		if unicode.IsLetter(char) {
+			r := rand.Intn(2)
+			if r == 1 {
+				newMessage += string(unicode.ToLower(char))
+			} else {
+				newMessage += string(unicode.ToUpper(char))
+			}
+		} else {
+			newMessage += string(char)
+		}
+	}
+
+	slackClient.SendMessage(slackClient.NewOutgoingMessage(newMessage, slackChannel))
 }
